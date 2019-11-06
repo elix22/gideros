@@ -13,8 +13,7 @@ class TextFieldBase : public Sprite
 {
 public:
     TextFieldBase(Application *application) : Sprite(application), layout_(),
-		textheight_(0), textwidth_(0),
-		lscalex_(0),lscaley_(0),lfontCacheVersion_(-1) {}
+		lscalex_(0),lscaley_(0),lfontCacheVersion_(-1),textlayout_() {}
     virtual ~TextFieldBase() {}
 
     virtual void setFont(FontBase* font) = 0;
@@ -38,8 +37,11 @@ public:
     virtual FontBase::TextLayoutParameters getLayout() { return layout_; }
 
 	bool scaleChanged();
-    virtual bool setDimensions(float w,float h);
+    virtual bool setDimensions(float w,float h,bool forLayout=false);
     virtual void getDimensions(float &w,float &h);
+    void getMinimumSize(float &w,float &h,bool preferred);
+    void getPointFromTextPos(size_t ri,float &cx,float &cy);
+    size_t getTextPosFromPoint(float &cx,float &cy);
 
 protected:
 	std::string text_;
@@ -47,7 +49,7 @@ protected:
     FontBase::TextLayoutParameters layout_;
     float lscalex_,lscaley_;
     int lfontCacheVersion_;
-    float textwidth_,textheight_; //Currently displayed text size incl. letter/line spacing
+    FontBase::TextLayout textlayout_; //Currently displayed text layout
 };
 
 #endif

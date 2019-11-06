@@ -4,6 +4,7 @@
 #include <gglobal.h>
 #include <stdlib.h>
 #include "Shaders.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,12 +15,15 @@ extern "C" {
 #define GTEXTURE_RGBA 2
 #define GTEXTURE_LUMINANCE 3
 #define GTEXTURE_LUMINANCE_ALPHA 4
+#define GTEXTURE_DEPTH 5
 
 /* type */
 #define GTEXTURE_UNSIGNED_BYTE 0
 #define GTEXTURE_UNSIGNED_SHORT_5_6_5 1
 #define GTEXTURE_UNSIGNED_SHORT_4_4_4_4 2
 #define GTEXTURE_UNSIGNED_SHORT_5_5_5_1 3
+#define GTEXTURE_FLOAT 4
+#define GTEXTURE_UNSIGNED_SHORT 5
 
 /* wrap */
 #define GTEXTURE_REPEAT 0
@@ -67,7 +71,7 @@ G_API void gtexture_reloadTextures();
 G_API size_t gtexture_getMemoryUsage();
 
 G_API g_id gtexture_RenderTargetCreate(int width, int height,
-                                       int wrap, int filter);
+                                       int wrap, int filter, bool depth);
 
 G_API ShaderBuffer *gtexture_RenderTargetGetFBO(g_id renderTarget);
 
@@ -83,6 +87,12 @@ G_API void gtexture_RestoreTempTextures();
 //void gtexture_replace(g_id oldId, int format, int width, int height, int type, void *pixels);
 
 G_API ShaderBuffer *gtexture_BindRenderTarget(ShaderBuffer *fbo);
+
+#define GID_GLOBALHOOK_FONTSHAPER		0
+#define GID_GLOBALHOOK_TEXTCLASSIFIER	1
+#define GID_GLOBALHOOK_MAX				2
+G_API void g_setGlobalHook(unsigned int hookn,void *hook);
+G_API void *g_getGlobalHook(unsigned int hookn);
 
 #ifdef __cplusplus
 }

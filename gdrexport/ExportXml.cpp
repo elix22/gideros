@@ -14,12 +14,6 @@
 #include <QDesktopServices>
 #include <QUrl>
 
-#ifdef Q_OS_MACX
-#define ALL_PLUGINS_PATH "../../All Plugins"
-#else
-#define ALL_PLUGINS_PATH "All Plugins"
-#endif
-
 static bool IsSecret(QString key)
 {
 	return key.startsWith("secret.");
@@ -67,7 +61,12 @@ void ExportXml::SetupProperties(ExportContext *ctx)
 	ctx->props["sys.exeExtension"] = "";
 #endif
 	ctx->props["sys.cacheDir"] = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+#ifdef Q_OS_MACX
+	ctx->props["sys.giderosDir"] = QDir::currentPath()+"/../..";
+#else
 	ctx->props["sys.giderosDir"] = QDir::currentPath();
+#endif
+	ctx->props["sys.toolsDir"] = QDir::currentPath()+"/Tools";
 	ctx->props["sys.homeDir"] = QDir::homePath();
 	ctx->props["sys.exportDir"] = ctx->exportDir.absolutePath();
     ctx->props["sys.exportType"]=QString(ctx->player?"player":(ctx->assetsOnly?"assets":"full"));
@@ -167,7 +166,7 @@ bool ExportXml::exportXml(QString xmlFile, bool plugin, ExportContext *ctx) {
 
 QMap<QString, QString> ExportXml::availableTargets() {
 	QMap < QString, QString > xmlExports;
-	QDir sourceDir("Templates");
+	QDir sourceDir(TEMPLATES_PATH);
 	QStringList filters;
 	filters << "*.gexport";
 	sourceDir.setNameFilters(filters);

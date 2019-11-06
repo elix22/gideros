@@ -184,6 +184,7 @@ std::string getLocale();
 std::string getLanguage();
 void setKeepAwake(bool awake);
 bool setKeyboardVisibility(bool visible);
+int getKeyboardModifiers();
 std::vector<std::string> getDeviceInfo();
 std::string getAppId();
 void getSafeDisplayArea(int &l,int &t,int &r,int &b);
@@ -191,5 +192,7 @@ void getSafeDisplayArea(int &l,int &t,int &r,int &b);
 bool g_checkStringProperty(bool isSet, const char* what);
 const char* g_getProperty(const char* what, const char* arg);
 void g_setProperty(const char* what, const char* arg);
+bool gapplication_checkPermission(const char *what);
+void gapplication_requestPermissions(std::vector<std::string> perms);
 
 #endif

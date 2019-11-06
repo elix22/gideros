@@ -1,5 +1,6 @@
 package com.giderosmobile.android.player;
 
+import android.util.Log;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -81,10 +82,10 @@ public class HTTPManager {
 	}
 
 	void Close(long id) {
-		if (!ids_.containsKey(id))
+		HTTPThread thread = ids_.get(id);
+		if (thread==null)
 			return;
 
-		HTTPThread thread = ids_.get(id);
 
 		ids_.remove(id);
 
@@ -379,6 +380,7 @@ class HTTPThread extends Thread {
 			manager_.responseCallback(id_, udata_, output.toByteArray(),
 					statusCode,hdrCount,dataSize);
 		} catch (Exception e) {
+			Log.e("Gideros", "HTTP exception", e);
 			manager_.errorCallback(id_, udata_);
 		}
 	}

@@ -22,6 +22,7 @@ private:
 	static int getDeviceSafeArea(lua_State* L);
 	static int setKeepAwake(lua_State* L);
 	static int setKeyboardVisibility(lua_State* L);
+	static int getKeyboardModifiers(lua_State* L);
 	static int getLogicalTranslateX(lua_State* L);
 	static int getLogicalTranslateY(lua_State* L);
 	static int getLogicalScaleX(lua_State* L);
@@ -51,6 +52,8 @@ private:
     static int getDeviceName(lua_State *L);
     static int set(lua_State *L);
     static int get(lua_State *L);
+    static int requestPermissions(lua_State *L);
+    static int checkPermission(lua_State *L);
 };
 
 #endif

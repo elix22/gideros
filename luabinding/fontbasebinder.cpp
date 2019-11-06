@@ -2,6 +2,7 @@
 #include <fontbase.h>
 #include "luaapplication.h"
 #include <luautil.h>
+#include <utf8.h>
 
 FontBaseBinder::FontBaseBinder(lua_State *L)
 {
@@ -26,7 +27,8 @@ FontBaseBinder::FontBaseBinder(lua_State *L)
 	lua_pushinteger(L,FontBase::TLF_RIGHT); lua_setfield(L,-2,"TLF_RIGHT");
 	lua_pushinteger(L,FontBase::TLF_LEFT); lua_setfield(L,-2,"TLF_LEFT");
 	lua_pushinteger(L,FontBase::TLF_JUSTIFIED); lua_setfield(L,-2,"TLF_JUSTIFIED");
-	lua_pushinteger(L,FontBase::TLF_NOWRAP); lua_setfield(L,-2,"TLF_NOWRAP");
+    lua_pushinteger(L,FontBase::TLF_NOWRAP); lua_setfield(L,-2,"TLF_NOWRAP");
+    lua_pushinteger(L,FontBase::TLF_RTL); lua_setfield(L,-2,"TLF_RTL");
     lua_pushinteger(L,FontBase::TLF_REF_BASELINE); lua_setfield(L,-2,"TLF_REF_BASELINE");
     lua_pushinteger(L,FontBase::TLF_REF_TOP); lua_setfield(L,-2,"TLF_REF_TOP");
     lua_pushinteger(L,FontBase::TLF_REF_MIDDLE); lua_setfield(L,-2,"TLF_REF_MIDDLE");
@@ -34,6 +36,9 @@ FontBaseBinder::FontBaseBinder(lua_State *L)
     lua_pushinteger(L,FontBase::TLF_REF_LINETOP); lua_setfield(L,-2,"TLF_REF_LINETOP");
     lua_pushinteger(L,FontBase::TLF_REF_LINEBOTTOM); lua_setfield(L,-2,"TLF_REF_LINEBOTTOM");
 	lua_pushinteger(L,FontBase::TLF_BREAKWORDS); lua_setfield(L,-2,"TLF_BREAKWORDS");
+    lua_pushinteger(L,FontBase::TLF_LTR); lua_setfield(L,-2,"TLF_LTR");
+    lua_pushinteger(L,FontBase::TLF_NOSHAPING); lua_setfield(L,-2,"TLF_NOSHAPING");
+    lua_pushinteger(L,FontBase::TLF_NOBIDI); lua_setfield(L,-2,"TLF_NOBIDI");
     lua_pop(L,1);
 }
 
@@ -163,7 +168,7 @@ int FontBaseBinder::layoutText(lua_State *L)
     for (size_t k=0;k<tl.parts.size();k++)
     {
     	FontBase::ChunkLayout cl=tl.parts[k];
-    	lua_createtable(L,0,9);
+    	lua_createtable(L,0,13);
         lua_pushnumber(L,cl.x);
         lua_setfield(L,-2,"x");
         lua_pushnumber(L,cl.y);
@@ -176,14 +181,41 @@ int FontBaseBinder::layoutText(lua_State *L)
         lua_setfield(L,-2,"dx");
         lua_pushnumber(L,cl.dy);
         lua_setfield(L,-2,"dy");
+        lua_pushnumber(L,cl.shapeScaleX);
+        lua_setfield(L,-2,"glyphScaleX");
+        lua_pushnumber(L,cl.shapeScaleY);
+        lua_setfield(L,-2,"glyphScaleY");
         lua_pushstring(L,cl.text.c_str());
         lua_setfield(L,-2,"text");
-        lua_pushlstring(L,&cl.sep,1);
+        if (cl.sep) {
+			char seputf[8];
+			int sepsz=wchar_to_utf8(&cl.sep,1,seputf,8,0);
+			lua_pushlstring(L,seputf,sepsz);
+        }
+        else
+        	lua_pushstring(L,"");
         lua_setfield(L,-2,"sep");
         lua_pushnumber(L,cl.sepl);
         lua_setfield(L,-2,"sepl");
         lua_pushinteger(L,cl.line);
         lua_setfield(L,-2,"line");
+
+        lua_createtable(L,cl.shaped.size(),0);
+        for (size_t l=0;l<cl.shaped.size();l++)
+        {
+        	FontBase::GlyphLayout gl=cl.shaped[l];
+        	lua_createtable(L,0,4);
+        	lua_pushinteger(L,gl.glyph);
+            lua_setfield(L,-2,"glyph");
+        	lua_pushinteger(L,gl.srcIndex);
+            lua_setfield(L,-2,"srcIndex");
+            lua_pushnumber(L,gl.advX);
+            lua_setfield(L,-2,"advX");
+            lua_pushnumber(L,gl.advY);
+            lua_setfield(L,-2,"advY");
+            lua_rawseti(L,-2,l+1);
+        }
+        lua_setfield(L,-2,"glyphs");
 
         lua_rawseti(L,-2,k+1);
     }

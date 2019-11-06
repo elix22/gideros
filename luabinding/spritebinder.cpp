@@ -83,6 +83,7 @@ SpriteBinder::SpriteBinder(lua_State* L)
 		{"setShader", SpriteBinder::setShader},
 		{"setShaderConstant", SpriteBinder::setShaderConstant},
 		{"setStencilOperation", SpriteBinder::setStencilOperation},
+		{"setStopEventPropagation",setStopEventPropagation},
 
 		{"set", SpriteBinder::set},
 		{"get", SpriteBinder::get},
@@ -187,6 +188,23 @@ SpriteBinder::SpriteBinder(lua_State* L)
     ACONSTANT(SOUTHEAST);
 #undef FCONSTANT
 #undef ACONSTANT
+
+	lua_pushinteger(L, SPRITE_EVENTMASK_MOUSE);
+	lua_setfield(L, -2, "EVENTMASK_MOUSE");
+	lua_pushinteger(L, SPRITE_EVENTMASK_TOUCH);
+	lua_setfield(L, -2, "EVENTMASK_TOUCH");
+	lua_pushinteger(L, SPRITE_EVENTMASK_KEY);
+	lua_setfield(L, -2, "EVENTMASK_KEY");
+
+	lua_pushinteger(L, 0);
+	lua_setfield(L, -2, "LAYOUT_INFO_CURRENT");
+	lua_pushinteger(L, 1);
+	lua_setfield(L, -2, "LAYOUT_INFO_MINIMAL");
+	lua_pushinteger(L, 2);
+	lua_setfield(L, -2, "LAYOUT_INFO_PREFERRED");
+	lua_pushinteger(L, 3);
+	lua_setfield(L, -2, "LAYOUT_INFO_BEST");
+
     lua_setglobal(L, "Sprite");
 }
 
@@ -217,6 +235,16 @@ int SpriteBinder::destruct(lua_State* L)
 	Sprite* sprite = static_cast<Sprite*>(ptr);
 	sprite->unref();
 
+	return 0;
+}
+
+int SpriteBinder::setStopEventPropagation(lua_State *L) {
+	Binder binder(L);
+	Sprite* sprite = static_cast<Sprite*>(binder.getInstance("Sprite", 1));
+	int mask=lua_tointeger(L,2);
+	if (mask==0) //if zero, it may have been something not convertible, check as boolean
+		mask=lua_toboolean(L,2)?-1:0;
+	sprite->setStopPropagationMask(mask);
 	return 0;
 }
 
@@ -503,7 +531,7 @@ int SpriteBinder::getClip(lua_State* L)
 #define FILL_BOOL(n,f) lua_getfield(L,2,n); p->f=lua_toboolean(L,-1); lua_pop(L,1);
 #define STOR_NUM_ARRAY(n,f) \
 		lua_newtable(L); \
-		for (size_t k=0;k<p->f.size();k++) { lua_pushinteger(L,p->f[k]); lua_rawseti(L,-2,k+1); }\
+		for (size_t k=0;k<p->f.size();k++) { lua_pushnumber(L,p->f[k]); lua_rawseti(L,-2,k+1); }\
 		lua_setfield(L,-2,n);
 #define STOR_INT(n,f) lua_pushinteger(L,p->f); lua_setfield(L,-2,n);
 #define STOR_INTT(n,f,t) lua_pushinteger(L,(int)p->f); lua_setfield(L,-2,n);
@@ -528,6 +556,7 @@ int SpriteBinder::setLayoutParameters(lua_State *L)
         FILL_NUM("insetTop",pInsets.top); FILL_NUM("insetLeft",pInsets.left);
         FILL_NUM("insetBottom",pInsets.bottom); FILL_NUM("insetRight",pInsets.right);
         FILL_BOOL("equalizeCells",equalizeCells);
+        FILL_BOOL("resizeContainer",resizeContainer);
         p->dirty=true;
 	}
 	return 0;
@@ -575,6 +604,7 @@ int SpriteBinder::getLayoutParameters(lua_State *L)
         STOR_NUM("insetTop",pInsets.top); STOR_NUM("insetLeft",pInsets.left);
         STOR_NUM("insetBottom",pInsets.bottom); STOR_NUM("insetRight",pInsets.right);
         STOR_BOOL("equalizeCells",equalizeCells);
+        STOR_BOOL("resizeContainer",resizeContainer);
 	}
 	else
 		lua_pushnil(L);
@@ -612,14 +642,50 @@ int SpriteBinder::getLayoutInfo(lua_State *L)
 
 	Binder binder(L);
 	Sprite* sprite = static_cast<Sprite*>(binder.getInstance("Sprite"));
+	float epw=luaL_optnumber(L,2,-1);
+	float eph=luaL_optnumber(L,3,-1);
+	int type=luaL_optinteger(L,4,0);
+
 	if (sprite->hasLayoutState())
 	{
 		GridBagLayout *sp=sprite->getLayoutState();
-		GridBagLayoutInfo *p=sp->getCurrentLayoutInfo();
+		GridBagLayoutInfo pi;
+		GridBagLayoutInfo *p=&pi;
+		if (type==0) { //Current
+			int loops=100; //Detect endless loops while forcing immediate layout
+			while(sp->dirty&&(loops--))
+			{
+				sp->dirty=false;
+				float pwidth,pheight;
+				sprite->getDimensions(pwidth, pheight);
+				if (epw>=0) pwidth=epw;
+				if (eph>=0) pheight=eph;
+				sp->ArrangeGrid(sprite,pwidth,pheight);
+			}
+			if (loops==0) //Gave up, mark as clean to prevent going through endless loop again
+				sp->dirty=false;
+			p=sp->getCurrentLayoutInfo();
+		} else
+		{
+			float dw,dh;
+			pi = sp->getLayoutInfo(sprite, (type>=2)?2:type); //PREFERRED or BEST
+		    sp->getMinSize(sprite, pi, dw, dh, sp->pInsets);
+		    if (type==3) {//BEST
+				float pwidth,pheight;
+				sprite->getDimensions(pwidth, pheight);
+				if (pwidth < dw || pheight < dh) {
+					pi = sp->getLayoutInfo(sprite, 1);
+					sp->getMinSize(sprite, pi, dw, dh, sp->pInsets);
+				}
+		    }
+		    pi.reqWidth=dw;
+		    pi.reqHeight=dh;
+		}
 		lua_newtable(L);
 
 		STOR_INT("width",width); STOR_INT("height",height);
-		STOR_INT("startx",startx); STOR_INT("starty",starty);
+		STOR_NUM("reqWidth",reqWidth); STOR_NUM("reqHeight",reqHeight);
+		STOR_NUM("startx",startx); STOR_NUM("starty",starty);
 		STOR_NUM_ARRAY("minWidth",minWidth);
 		STOR_NUM_ARRAY("minHeight",minHeight);
 		STOR_NUM_ARRAY("weightX",weightX);

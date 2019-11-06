@@ -57,6 +57,7 @@ struct RenderTargetElement : public CommonElement
 {
     ShaderBuffer *_framebuffer;
     size_t textureSize;
+    bool depth;
     std::vector<char> buffer;
     void *udata;
 };
@@ -68,7 +69,10 @@ static int pixelSize(int format, int type)
     case GTEXTURE_UNSIGNED_SHORT_5_6_5:
     case GTEXTURE_UNSIGNED_SHORT_4_4_4_4:
     case GTEXTURE_UNSIGNED_SHORT_5_5_5_1:
+    case GTEXTURE_UNSIGNED_SHORT:
         return 2;
+    case GTEXTURE_FLOAT:
+        return 4;
     case GTEXTURE_UNSIGNED_BYTE:
         switch (format)
         {
@@ -408,7 +412,7 @@ public:
             std::vector<char>().swap(element->buffer);
             genAndUploadTexture(element, &uncompressed[0]);
 
-            element->_framebuffer=engine->createRenderTarget(element->_texture);
+            element->_framebuffer=engine->createRenderTarget(element->_texture,element->depth);
         }
 
     }
@@ -457,10 +461,19 @@ public:
 
 
     g_id RenderTargetCreate(int width, int height,
-                            int wrap, int filter)
+                            int wrap, int filter, bool depth)
     {
-        int format = GTEXTURE_RGBA;
-        int type = GTEXTURE_UNSIGNED_BYTE;
+        int format = depth?GTEXTURE_DEPTH:GTEXTURE_RGBA;
+        ShaderTexture::Packing pk=engine->getPreferredPackingForTextureFormat(depth?ShaderTexture::FMT_DEPTH:ShaderTexture::FMT_RGBA);
+        int type=GTEXTURE_UNSIGNED_BYTE;
+        switch (pk) {
+        case ShaderTexture::PK_FLOAT: type=GTEXTURE_FLOAT; break;
+        case ShaderTexture::PK_USHORT: type=GTEXTURE_UNSIGNED_SHORT; break;
+        case ShaderTexture::PK_USHORT_4444: type=GTEXTURE_UNSIGNED_SHORT_4_4_4_4; break;
+        case ShaderTexture::PK_USHORT_565: type=GTEXTURE_UNSIGNED_SHORT_5_6_5; break;
+        case ShaderTexture::PK_USHORT_5551: type=GTEXTURE_UNSIGNED_SHORT_5_5_5_1; break;
+        default: type=GTEXTURE_UNSIGNED_BYTE;
+        }
 
         RenderTargetElement *element = new RenderTargetElement;
 
@@ -478,6 +491,7 @@ public:
         element->filter = filter;
         element->udata = NULL;
         element->renderTarget = true;
+        element->depth=depth;
 
         element->textureSize = width * height * pixelSize(format, type);
 
@@ -490,7 +504,7 @@ public:
         
         glog_v("Creating render target. Total memory is %g KB.", (bufferMemory_ + textureMemory_) / 1024.0);
 
-        element->_framebuffer=engine->createRenderTarget(element->_texture);
+        element->_framebuffer=engine->createRenderTarget(element->_texture,element->depth);
 
         renderTargetElements_[nextid_] = element;
 
@@ -636,6 +650,9 @@ private:
         case GTEXTURE_LUMINANCE_ALPHA:
             format = ShaderTexture::FMT_YA;
             break;
+        case GTEXTURE_DEPTH:
+            format = ShaderTexture::FMT_DEPTH;
+            break;
         }
 
         ShaderTexture::Packing type;
@@ -652,6 +669,12 @@ private:
             break;
         case GTEXTURE_UNSIGNED_SHORT_5_5_5_1:
             type = ShaderTexture::PK_USHORT_5551;
+            break;
+        case GTEXTURE_FLOAT:
+            type = ShaderTexture::PK_FLOAT;
+            break;
+        case GTEXTURE_UNSIGNED_SHORT:
+            type = ShaderTexture::PK_USHORT;
             break;
         }
         ShaderTexture::Wrap wrap=ShaderTexture::WRAP_CLAMP;
@@ -797,9 +820,9 @@ G_API size_t gtexture_getMemoryUsage()
 }
 
 g_id gtexture_RenderTargetCreate(int width, int height,
-                                 int wrap, int filter)
+                                 int wrap, int filter,bool depth)
 {
-    return s_manager->RenderTargetCreate(width, height, wrap, filter);
+    return s_manager->RenderTargetCreate(width, height, wrap, filter, depth);
 }
 
 ShaderBuffer *gtexture_RenderTargetGetFBO(g_id renderTarget)
@@ -840,6 +863,17 @@ void gtexture_RestoreTempTextures()
 ShaderBuffer *gtexture_BindRenderTarget(ShaderBuffer *fbo)
 {
 	return engine->setFramebuffer(fbo);
+}
+
+static void *global_hooks[GID_GLOBALHOOK_MAX];
+void g_setGlobalHook(unsigned int hookn,void *hook) {
+	if (hookn>=GID_GLOBALHOOK_MAX) return;
+	global_hooks[hookn]=hook;
+}
+
+void *g_getGlobalHook(unsigned int hookn) {
+	if (hookn>=GID_GLOBALHOOK_MAX) return NULL;
+	return global_hooks[hookn];
 }
 
 }

@@ -18,6 +18,15 @@ const char *metalShaderEngine::getVersion() {
     return "Metal";
 }
 
+ShaderTexture::Packing metalShaderEngine::getPreferredPackingForTextureFormat(ShaderTexture::Format format)
+{
+	switch (format) {
+	case ShaderTexture::FMT_DEPTH: return ShaderTexture::PK_FLOAT;
+	default:
+		return ShaderEngine::getPreferredPackingForTextureFormat(format);
+	}
+}
+
 void metalShaderEngine::resizeFramebuffer(int width,int height)
 {
 	devWidth = width;
@@ -210,8 +219,8 @@ ShaderTexture *metalShaderEngine::createTexture(ShaderTexture::Format format,
 			filtering, forRT);
 }
 
-ShaderBuffer *metalShaderEngine::createRenderTarget(ShaderTexture *texture) {
-	return new metalShaderBuffer(texture);
+ShaderBuffer *metalShaderEngine::createRenderTarget(ShaderTexture *texture,bool forDepth) {
+	return new metalShaderBuffer(texture,forDepth);
 }
 
 void metalShaderEngine::clear(int f) {
@@ -425,13 +434,22 @@ void metalShaderEngine::bindTexture(int num, ShaderTexture *texture) {
 
 void metalShaderEngine::setClip(int x, int y, int w, int h) {
     MTLScissorRect sr;
+    NSUInteger tw=pass().colorAttachments[0].texture.width;
+    NSUInteger th=pass().colorAttachments[0].texture.height;
     if ((w < 0) || (h < 0)) {
         sr.x=0;
         sr.y=0;
-        sr.width=pass().colorAttachments[0].texture.width;
-        sr.height=pass().colorAttachments[0].texture.height;
+        sr.width=tw;
+        sr.height=th;
     }
 	else {
+		//Sanitize
+		if (x<0) { w+=x; x=0; }
+		if (y<0) { h+=y; y=0; }
+		if (x>tw) x=tw;
+		if (y>tw) y=th;
+		if ((x+w)>tw) w=tw-x;
+		if ((y+h)>th) h=th-y;
         sr.x=x;
         sr.y=y;
         sr.width=w;

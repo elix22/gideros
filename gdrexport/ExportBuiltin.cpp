@@ -43,7 +43,7 @@ void ExportBuiltin::fillTargetReplacements(ExportContext *ctx)
     wildcards1 <<
         "*.pch" <<
         "*.plist" <<
-        "*.pbxproj" <<
+        "*.pbxproj" << "Podfile" <<
         "*.java" <<
         "*.xml" <<
         "*.appxmanifest" <<
@@ -134,10 +134,9 @@ void ExportBuiltin::fillTargetReplacements(ExportContext *ctx)
     	if (winver.startsWith("."))
     		winver="1"+winver;
     	QStringList wvparts=winver.split(".", QString::SkipEmptyParts);
-    	winver=wvparts[0].remove(QRegExp("^[0]*"))
-    			+"."+wvparts[1].remove(QRegExp("^[0]*"))
-				+"."+wvparts[2].remove(QRegExp("^[0]*"))
-				+".0";
+    	winver=QString("%1.%2.%3.0").arg(wvparts[0].toInt())
+				.arg(wvparts[1].toInt())
+				.arg(wvparts[2].toInt());
 
 		replaceList1 << qMakePair(QString("Gideros Player").toUtf8(), ctx->appName.toUtf8());
         replaceList1 << qMakePair(QString("giderosgame").toUtf8(), ctx->basews.toUtf8());
@@ -149,10 +148,12 @@ void ExportBuiltin::fillTargetReplacements(ExportContext *ctx)
     }
     else if(ctx->deviceFamily == e_Html5){
         replaceList1 << qMakePair(QString("<title>Gideros</title>").toUtf8(), ("<title>"+ctx->appName+"</title>").toUtf8());
+        replaceList1 << qMakePair(QString("app: 'Gideros'").toUtf8(), ("app: '"+ctx->basews+"'").toUtf8());
         replaceList1 << qMakePair(QString("<body class=\"fullscreen toplevel\">").toUtf8(), ("<body class=\"fullscreen toplevel\" style=\"background-color:"+ctx->properties.backgroundColor+";\">").toUtf8());
         if(ctx->properties.disableSplash)
             replaceList1 << qMakePair(QString("<img src=\"gideros.png\" />").toUtf8(), QString("<img src=\"gideros.png\" style=\"display:none;\"/>").toUtf8());
         replaceList1 << qMakePair(QString("GIDEROS_MEMORY_MB=128").toUtf8(),QString("GIDEROS_MEMORY_MB=%1").arg(ctx->properties.html5_mem).toUtf8());
+        replaceList1 << qMakePair(QString("CRASH_URL=''").toUtf8(),QString("CRASH_URL='%1'").arg(ctx->properties.html5_crash).toUtf8());
 		QString ext;
 		if (ctx->properties.html5_wasm)
 			ext="wasm";
@@ -348,12 +349,11 @@ void ExportBuiltin::doExport(ExportContext *ctx)
         	ctx->outputDir.cd("package");
     	}
       //Copy template flavor
- 	   ExportCommon::copyTemplate(QString("Templates").append("/").append(templatedir).append("/").append(ctx->properties.html5_wasm?"Wasm":"Jasm"),"",ctx, false, QStringList(), QStringList());
+        ExportCommon::copyTemplate(QString(TEMPLATES_PATH).append("/").append(templatedir).append("/").append(ctx->properties.html5_wasm?"Wasm":"Jasm"),"",ctx, false, QStringList(), QStringList());
     }
 
    // copy template
-   if (templatedir.length()>0)
-    ExportCommon::copyTemplate(QString("Templates").append("/").append(templatedir).append("/").append(ctx->templatename),"",ctx, false, QStringList(), QStringList());
+   if (templatedir.length()>0)    ExportCommon::copyTemplate(QString(TEMPLATES_PATH).append("/").append(templatedir).append("/").append(ctx->templatename),"",ctx, false, QStringList(), QStringList());
 
    ExportBuiltin::prepareAssetFolder(ctx);
    ExportBuiltin::exportAllAssetsFiles(ctx);

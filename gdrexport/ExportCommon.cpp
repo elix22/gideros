@@ -133,7 +133,7 @@ void ExportCommon::resizeImage(QImage *image, int width, int height,
 	}
 	if (!withAlpha)
 		xform = xform.convertToFormat(QImage::Format_RGB888);
-	xform.save(output, "png", -1); //Use default compression for PNG, not quality
+	xform.save(output, "png", 0); //Use maximumt compression for PNG, not quality since png is lossless anyhow
 }
 
 bool ExportCommon::appIcon(ExportContext *ctx, int width, int height,
@@ -880,10 +880,17 @@ bool ExportCommon::unzip(ExportContext *ctx, QString file, QString dest) {
 				if (ofile.open(QIODevice::WriteOnly)) {
 					ofile.write(fcont);
 					ofile.close();
-				} else {
-					exportError("Can't open file %s\n",
-							lname.toStdString().c_str());
-					break;
+				} else { //Try to create dir
+                    QFileInfo fi(toPath.absoluteFilePath(lname));
+                    fi.absoluteDir().mkpath(".");
+                    if (ofile.open(QIODevice::WriteOnly)) {
+                        ofile.write(fcont);
+                        ofile.close();
+                    } else { //No joy
+                        exportError("Can't open file %s\n",
+                                lname.toStdString().c_str());
+                        break;
+                    }
 				}
 			}
 			if ((unixattr >= 0) && (unixattr & 1)) {

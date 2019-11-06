@@ -36,7 +36,8 @@ void Particles::clearParticles() {
 int Particles::addParticle(float x, float y, float size, float angle, int ttl) {
 	int s = -1;
 	int k = 2;
-	while (k < points_.size()) {
+	int kmax=particleCount*16;
+	while (k < kmax) {
 		if (points_[k] == 0) {
 			s = k / 16;
 			break;
@@ -140,6 +141,18 @@ void Particles::setSize(int i, float size) {
 	points_[i * 16 + 4 + 2] = size;
 	points_[i * 16 + 8 + 2] = size;
 	points_[i * 16 + 12 + 2] = size;
+	points_.Update();
+}
+
+void Particles::scaleParticles(float size,bool absolute) {
+	for (size_t i=0;i<(particleCount*4);i++) {
+		if (points_[i*4+2]!=0) {
+			if (absolute)
+				points_[i*4+2]=size;
+			else
+				points_[i*4+2]*=size;
+		}
+	}
 	points_.Update();
 }
 

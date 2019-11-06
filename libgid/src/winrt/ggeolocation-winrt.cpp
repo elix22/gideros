@@ -17,11 +17,24 @@ static void gps_update(Geolocator^ gl,
 	PositionChangedEventArgs^ pos)
 {
 	ggeolocation_LocationUpdateEvent *event = (ggeolocation_LocationUpdateEvent*)malloc(sizeof(ggeolocation_LocationUpdateEvent));
-	event->latitude = pos->Position->Coordinate->Latitude;
-	event->longitude = pos->Position->Coordinate->Longitude;
-	event->altitude = pos->Position->Coordinate->Altitude->Value;
+	event->latitude = pos->Position->Coordinate->Point->Position.Latitude;
+	event->longitude = pos->Position->Coordinate->Point->Position.Longitude;
+	event->altitude = pos->Position->Coordinate->Point->Position.Altitude;
 	event->speed = pos->Position->Coordinate->Speed->Value;
 	event->course = pos->Position->Coordinate->Heading->Value;
+	event->accuracy=pos->Position->Coordinate->Accuracy;
+	event->type=0;
+	switch (pos->Position->Coordinate->PositionSource) {
+		case 0: event->type='C'; break; //CELLULAR
+		case 1: event->type='P'; break; //SAT
+		case 2: event->type='W'; break; //WIFI
+		case 3: event->type='N'; break; //NET
+		case 4: event->type=0; break; //UNKNOWN
+		case 5: event->type='F'; break; //FIXED
+		case 6: event->type='O'; break; //OBFUSCATED
+		default:
+			event->type=0; break; //UNKNOWN
+	}
 
 	gevent_EnqueueEvent(gid_, callback_s, GGEOLOCATION_LOCATION_UPDATE_EVENT, event, 1, NULL);
 }
@@ -56,7 +69,7 @@ int ggeolocation_isHeadingAvailable()
 
 void ggeolocation_setAccuracy(double accuracy)
 {	
-	gps->DesiredAccuracyInMeters= ref new Platform::Box<unsigned int>(accuracy);
+	gps->DesiredAccuracyInMeters= ref new Platform::Box<unsigned int>((unsigned int)accuracy);
 }
 
 double ggeolocation_getAccuracy()

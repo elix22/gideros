@@ -17,6 +17,7 @@ Sprite::Sprite(Application* application) :
 	allSprites_.insert(this);
 
 //	graphicsBases_.push_back(GraphicsBase());
+	stopPropagationMask_=0;
 
 	alpha_ = 1;
 	colorTransform_ = 0;
@@ -379,6 +380,9 @@ void Sprite::addChildAt(Sprite* sprite, int index, GStatus* status) {
 
 	children_.insert(children_.begin() + index, sprite);
 	sprite->ref();
+    if (layoutState&&sprite->layoutConstraints)
+        layoutState->dirty=true;
+
 
 	sprite->unref();	// unguard
 
@@ -1205,7 +1209,13 @@ void Sprite::eventListenersChanged() {
 		allSpritesWithListeners_.erase(this);
 }
 
-bool Sprite::setDimensions(float w,float h)
+void Sprite::setStopPropagationMask(int mask) {
+	stopPropagationMask_=mask;
+	eventListenersChanged();
+}
+
+
+bool Sprite::setDimensions(float w,float h, bool forLayout)
 {
 //    bool changed=((reqWidth_!=w)||(reqHeight_!=h));
     bool changed=(fabs(reqWidth_-w)+fabs(reqHeight_-h))>0.01;
